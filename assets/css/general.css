@@ -1,0 +1,17 @@
+html,body {
+    height: 100%;
+}
+
+#network {
+    height: 100%;
+    width: 100%;
+}
+
+.vis-network:focus {
+    outline: 0;
+}
+
+.toolbar {
+    background: slategray;
+}
+
