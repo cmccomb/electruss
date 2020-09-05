@@ -1,0 +1,28 @@
+{
+  "name": "electruss",
+  "version": "0.1.0",
+  "description": "Design research testbed",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cmccomb/electruss.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cmccomb/electruss/issues"
+  },
+  "homepage": "https://github.com/cmccomb/electruss#readme",
+  "devDependencies": {
+    "electron": "^10.1.1"
+  },
+  "dependencies": {
+    "d3": "^6.1.1",
+    "bootstrap": "^4.1.3",
+    "jquery": "^3.3.1",
+    "popper.js": "^1.14.4"
+  }
+}
