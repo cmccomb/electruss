@@ -12,7 +12,7 @@ const xy_fixed_image = "./assets/images/xyfixed.png";
 const scale_factor = 10;
 
 default_elastic_modulus = 10**9;
-default_area = 1;
+default_area = 1.0;
 
 // create an array with nodes
 let nodes = new vis.DataSet([
@@ -44,14 +44,16 @@ function update_edges() {
     }
 }
 
-// create a network
+// Identify teh container for hte network drawing
 let container = document.getElementById('network');
 
+// Define data
 let data = {
     nodes: nodes,
     edges: edges
 };
 
+// Define a hell of a lot of options
 let options = {
     autoResize: true,
     height: '100%',
@@ -107,8 +109,10 @@ let options = {
     }
 };
 
+// Construct initial network
 let network = new vis.Network(container, data, options);
 
+// Add node callback
 $("#add-node").on('click', function (e) {
     deactivate("#add-edge");
     deactivate("#drag-node");
@@ -120,11 +124,13 @@ $("#add-node").on('click', function (e) {
     }
 })
 
+// Edit node cal
 $("#edit-node").on('click', function (e) {
     deactivate_all();
     network.editNode();
 })
 
+// Drag node callback
 $("#drag-node").on('click', function (e) {
     deactivate("#add-edge");
     deactivate("#add-node");
@@ -138,12 +144,7 @@ $("#drag-node").on('click', function (e) {
     }
 })
 
-
-
-
-
-
-
+// Add Edge callback
 $("#add-edge").on('click', function (e) {
     deactivate("#add-node");
     deactivate("#drag-node");
@@ -155,44 +156,34 @@ $("#add-edge").on('click', function (e) {
     }
 })
 
+// Edit Edge Callback
 $("#edit-edge").on('click', function (e) {
     deactivate_all();
     network.editEdgeMode();
     update_edges();
 })
 
-
-
-
-
-
-
-
+// Delete selected callback
 $("#delete").on('click', function (e) {
     deactivate_all();
     network.deleteSelected();
     update_edges();
 })
 
+// Zoom to fit callback
 $("#zoom-to-fit").on('click', function (e) {
     deactivate_all();
     network.disableEditMode();
     network.fit({animation: true})
 })
 
-
-
-
-
-
-
+// Modal node apply callback
 $("#node-modal-apply").on('click', function (e) {
     let node = nodes.get($("#nodeModalLabel").val());
     node.fixed.x = $('#node-x-fixed').prop('checked');
     node.fixed.y = $('#node-y-fixed').prop('checked');
-    node.x = parseInt($('#node-x-coord').val());
-    node.y = parseInt($('#node-y-coord').val());
-    node.size = 15;
+    node.x = parseFloat($('#node-x-coord').val());
+    node.y = parseFloat($('#node-y-coord').val());
     if (node.fixed.x === true && node.fixed.y === false) {
         node.shape = 'image';
         node.image = x_fixed_image;
@@ -205,11 +196,16 @@ $("#node-modal-apply").on('click', function (e) {
         node.shape = 'image';
         node.image = xy_fixed_image;
         node.size = 25;
+    } else if (node.fixed.x === false && node.fixed.y === false) {
+        node.shape = 'ellipse';
+        node.size = 25;
+        node.color = editable_color;
     }
     nodes.update(node);
     $('#nodeModal').modal('hide');
 })
 
+// Modal edge apply callback
 $("#edge-modal-apply").on('click', function (e) {
     let edge = edges.get($("#edgeModalLabel").val());
     edge.area = parseFloat($('#edge-area').val());
@@ -219,31 +215,47 @@ $("#edge-modal-apply").on('click', function (e) {
     update_edges();
 })
 
-
+// Modal login callback
 $("#login-modal-apply").on('click', function (e) {
     $('#loginModal').modal('hide');
     $("#all").removeClass("d-none");
     network.fit();
 })
 
-
-
-
-
+// Deactive a single button
 function deactivate(name) {
     $(name).removeClass("active");
 }
 
+// Deactive all buttons
 function deactivate_all() {
     deactivate("#add-node");
     deactivate("#add-edge");
     deactivate("#drag-node");
 }
 
-function convert_canvas_to_absolute(xy) {
-    return [xy[0]/scale_factor, -xy[1]/scale_factor]
+// Convert canvas to simulation units
+function canv2sim(node) {
+    return [node.x[0]/scale_factor, -node.y[1]/scale_factor]
 }
 
-function convert_absolute_to_canvas(xy) {
-    return [xy[0]*scale_factor, -xy[1]*scale_factor]
+// Convert simulation units to canvas units
+function sim2canv(node) {
+    return [node.x[0]*scale_factor, -node.y[1]*scale_factor]
+}
+
+// Save network to json string
+function save_to_JSON(nodes, edges) {
+    let network = {time: new Date, nodes: [], edges: []};
+    let node_ids = nodes.getIds();
+    for (let i = 0; i < node_ids.length; i++) {
+        network.nodes.push(nodes.get(node_ids[i]));
+    }
+
+    let edge_ids = edges.getIds();
+    for (let i = 0; i < edge_ids.length; i++) {
+        network.edges.push(edges.get(edge_ids[i]));
+    }
+
+    return JSON.stringify(network);
 }
