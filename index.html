@@ -25,12 +25,26 @@
             <h1 class="text-primary">Electruss</h1>
             <hr class="btn-outline-primary"/>
             <button type="button" class="btn btn-outline-primary btn-block" id="add-node">Add Node</button>
-            <button type="button" class="btn btn-outline-primary btn-block" id="add-edge">Add Edge</button>
             <button type="button" class="btn btn-outline-primary btn-block" id="edit-node">Edit Selected Node</button>
+            <button type="button" class="btn btn-outline-primary btn-block disabled" id="drag-node">Drag Node</button>
+            <hr class="btn-outline-primary"/>
+            <button type="button" class="btn btn-outline-primary btn-block" id="add-edge">Add Edge</button>
             <button type="button" class="btn btn-outline-primary btn-block" id="edit-edge">Edit Selected Edge</button>
+            <div class="btn-group btn-block">
+                <button type="button" class="btn btn-outline-primary disabled m-0" id="increase-all">+ All</button>
+                <button type="button" class="btn btn-outline-primary disabled m-0" id="decrease-all">- All</button>
+            </div>
+            <hr class="btn-outline-primary"/>
             <button type="button" class="btn btn-outline-primary btn-block" id="delete">Delete Selected</button>
+            <button type="button" class="btn btn-outline-primary btn-block disabled" id="delete-all">Delete All</button>
+            <div class="btn-group btn-block">
+                <button type="button" class="btn btn-outline-primary disabled m-0" id="undo">⟲ Undo</button>
+                <button type="button" class="btn btn-outline-primary disabled m-0" id="redo">Redo ⟳</button>
+            </div>
             <hr class="btn-outline-primary"/>
             <button type="button" class="btn btn-outline-primary btn-block" id="zoom-to-fit">Zoom to Fit</button>
+            <button type="button" class="btn btn-outline-primary btn-block disabled" id="show-forces">Show Forces</button>
+            <button type="button" class="btn btn-outline-primary btn-block disabled" id="show-fos">Show FOS</button>
         </div>
         <div class="col-9 h-100 p-0">
             <div id="network"></div>
@@ -84,8 +98,6 @@
         </div>
     </div>
 </div>
-
-
 
 <div class="modal fade" id="edgeModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
