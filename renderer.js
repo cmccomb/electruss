@@ -69,8 +69,6 @@ let options = {
 
 let network = new vis.Network(container, data, options);
 
-network.fit({animation: true})
-
 $("#add-node").on('click', function (e) {
     deactivate("#add-edge");
     $("#add-node").toggleClass("active");
@@ -125,6 +123,13 @@ $("#node-modal-apply").on('click', function (e) {
 
 $("#edge-modal-apply").on('click', function (e) {
     $('#edgeModal').modal('hide');
+})
+
+
+$("#login-modal-apply").on('click', function (e) {
+    $('#loginModal').modal('hide');
+    $("#all").removeClass("d-none");
+    network.fit();
 })
 
 function deactivate(name) {
