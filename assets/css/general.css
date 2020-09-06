@@ -7,8 +7,13 @@ html,body {
     width: 100%;
 }
 
-.vis-network:focus {
+.vis-network:focus{
     outline: 0;
+}
+
+.btn:focus, .active:focus{
+    outline:none !important;
+    box-shadow:none !important;
 }
 
 .toolbar {

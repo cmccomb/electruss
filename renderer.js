@@ -2,6 +2,10 @@ const editable_color = "red";
 const fixed_color = "blue";
 const edge_color = "green";
 
+const x_fixed_image = "";
+const y_fixed_image = "";
+const xy_fixed_image = "";
+
 // create an array with nodes
 let nodes = new vis.DataSet([
     {x: -100, y: 0, fixed: true, physics: false, shape: "square", size: 15, color: fixed_color},
@@ -68,34 +72,42 @@ let network = new vis.Network(container, data, options);
 network.fit({animation: true})
 
 $("#add-node").on('click', function (e) {
-    disable_all();
-    $("#add-node").addClass("active");
-    network.addNodeMode();
-})
-
-$("#edit-node").on('click', function (e) {
-    disable_all();
-    network.editNode();
+    deactivate("#add-edge");
+    $("#add-node").toggleClass("active");
+    if ($("#add-node").hasClass('active') === true) {
+        network.addNodeMode();
+    } else {
+        network.disableEditMode();
+    }
 })
 
 $("#add-edge").on('click', function (e) {
-    disable_all();
-    $("#add-edge").addClass("active");
-    network.addEdgeMode();
+    deactivate("#add-node");
+    $("#add-edge").toggleClass("active");
+    if ($("#add-edge").hasClass('active') === true) {
+        network.addEdgeMode();
+    } else {
+        network.disableEditMode();
+    }
+})
+
+$("#edit-node").on('click', function (e) {
+    deactivate_all();
+    network.editNode();
 })
 
 $("#edit-edge").on('click', function (e) {
-    disable_all();
+    deactivate_all();
     network.editEdgeMode();
 })
 
 $("#delete").on('click', function (e) {
-    disable_all();
+    deactivate_all();
     network.deleteSelected();
 })
 
 $("#zoom-to-fit").on('click', function (e) {
-    disable_all();
+    deactivate_all();
     network.disableEditMode();
     network.fit({animation: true})
 })
@@ -115,7 +127,11 @@ $("#edge-modal-apply").on('click', function (e) {
     $('#edgeModal').modal('hide');
 })
 
-function disable_all() {
-    $("#add-edge").removeClass("active");
-    $("#add-node").removeClass("active");
+function deactivate(name) {
+    $(name).removeClass("active");
+}
+
+function deactivate_all() {
+    deactivate("#add-node");
+    deactivate("#add-edge");
 }
