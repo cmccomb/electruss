@@ -9,6 +9,8 @@ const x_fixed_image = "./assets/images/xfixed.png";
 const y_fixed_image = "./assets/images/yfixed.png";
 const xy_fixed_image = "./assets/images/xyfixed.png";
 
+const scale_factor = 10;
+
 default_elastic_modulus = 10**9;
 default_area = 1;
 
@@ -194,11 +196,11 @@ $("#node-modal-apply").on('click', function (e) {
     if (node.fixed.x === true && node.fixed.y === false) {
         node.shape = 'image';
         node.image = x_fixed_image;
-        node.size = 25;
+        node.size = 12.5;
     } else if (node.fixed.x === false && node.fixed.y === true) {
         node.shape = 'image';
         node.image = y_fixed_image;
-        node.size = 25;
+        node.size = 12.5;
     } else if (node.fixed.x === true && node.fixed.y === true) {
         node.shape = 'image';
         node.image = xy_fixed_image;
@@ -236,4 +238,12 @@ function deactivate_all() {
     deactivate("#add-node");
     deactivate("#add-edge");
     deactivate("#drag-node");
+}
+
+function convert_canvas_to_absolute(xy) {
+    return [xy[0]/scale_factor, -xy[1]/scale_factor]
+}
+
+function convert_absolute_to_canvas(xy) {
+    return [xy[0]*scale_factor, -xy[1]*scale_factor]
 }
