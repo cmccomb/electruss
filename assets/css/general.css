@@ -12,6 +12,9 @@ html,body {
 }
 
 .toolbar {
-    background: slategray;
+    background: #333;
 }
 
+.inline-heading {
+    dislay: block;
+}
