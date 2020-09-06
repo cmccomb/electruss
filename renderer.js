@@ -4,8 +4,8 @@ const edge_color = "green";
 
 // create an array with nodes
 let nodes = new vis.DataSet([
-    {id: 1, x: -100, y: 0, fixed: true, physics: false, shape: "square", size: 15, color: fixed_color},
-    {id: 2, x: 100, y: 0, fixed: true, physics: false, shape: "square", size: 15, color: fixed_color},
+    {x: -100, y: 0, fixed: true, physics: false, shape: "square", size: 15, color: fixed_color},
+    {x: 100, y: 0, fixed: true, physics: false, shape: "square", size: 15, color: fixed_color},
 ]);
 
 // create an array with edges
@@ -101,7 +101,8 @@ $("#zoom-to-fit").on('click', function (e) {
 })
 
 $("#node-modal-apply").on('click', function (e) {
-    let node = nodes.get(parseInt($("#nodeModalLabel").val()));
+    console.log($("#nodeModalLabel").val());
+    let node = nodes.get($("#nodeModalLabel").val());
     node.fixed.x = $('#node-x-fixed').prop('checked');
     node.fixed.y = $('#node-y-fixed').prop('checked');
     node.x = parseInt($('#node-x-coord').val());
