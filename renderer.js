@@ -51,7 +51,9 @@ if (typeof window !== 'undefined' && !window.$) {
   window.$ = $;
 }
 
-const vis = (typeof window !== 'undefined' && window.vis) || global.vis;
+const vis =
+  (typeof window !== 'undefined' && window.vis) ||
+  (typeof global !== 'undefined' ? global.vis : undefined);
 const hasVis = Boolean(vis);
 
 const createNoopNetwork = () => ({
@@ -347,11 +349,15 @@ class RendererModule {
       this.network.fit({ animation: true });
     });
 
-    this.$('#login-modal-apply').on('click', () => {
-      this.$('#loginModal').modal('hide');
-      this.$('#all').removeClass('d-none');
-      this.network.fit({ animation: true });
-    });
+    const loginButton = document.getElementById('login-modal-apply');
+    if (loginButton) {
+      loginButton.addEventListener('click', () => {
+        if (this.$ && typeof this.$.fn?.modal === 'function') {
+          this.$('#loginModal').modal('hide');
+        }
+        this.showWorkspace();
+      });
+    }
 
     this.$('#node-modal-apply').on('click', () => {
       const nodeId = this.$('#nodeModalLabel').val();
@@ -443,6 +449,17 @@ class RendererModule {
     });
   }
 
+  showWorkspace() {
+    const workspace = document.getElementById('all');
+    if (workspace) {
+      workspace.classList.remove('d-none');
+    }
+
+    if (typeof this.network?.fit === 'function') {
+      this.network.fit({ animation: true });
+    }
+  }
+
   deactivate(name) {
     this.$(name).removeClass('active');
   }
@@ -490,6 +507,12 @@ const rendererApi = {
   getNodes: () => rendererModule.nodes,
   getEdges: () => rendererModule.edges,
 };
+
+document.addEventListener('click', (event) => {
+  if (event.target?.id === 'login-modal-apply') {
+    document.getElementById('all')?.classList.remove('d-none');
+  }
+});
 
 if (typeof window !== 'undefined') {
   window.electruss = rendererApi;
