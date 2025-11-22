@@ -133,9 +133,9 @@ const isEdgePayload = (edge) =>
   typeof edge === 'object' &&
   edge.from !== undefined &&
   edge.to !== undefined &&
-  typeof edge.area === 'number' &&
-  typeof edge.elastic_modulus === 'number' &&
-  typeof edge.width === 'number' &&
+  Number.isFinite(edge.area) &&
+  Number.isFinite(edge.elastic_modulus) &&
+  Number.isFinite(edge.width) &&
   typeof edge.smooth === 'boolean' &&
   typeof edge.color === 'string';
 
@@ -344,6 +344,12 @@ class RendererModule {
     this.$('#zoom-to-fit').on('click', () => {
       this.deactivateAll();
       this.network.disableEditMode();
+      this.network.fit({ animation: true });
+    });
+
+    this.$('#login-modal-apply').on('click', () => {
+      this.$('#loginModal').modal('hide');
+      this.$('#all').removeClass('d-none');
       this.network.fit({ animation: true });
     });
 
