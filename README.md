@@ -2,6 +2,26 @@
 
 An electron app (and webpage) for studying how people design trusses
 
+## Truss performance calculations
+
+Use the `computeTrussPerformance` helper to evaluate 2D trusses programmatically. Nodes define coordinates, support conditions, and optional nodal loads; edges define connectivity and material properties. The helper returns nodal displacements, member axial forces, support reactions, and the maximum displacement magnitude.
+
+```
+const { computeTrussPerformance } = require('./performance');
+
+const nodes = [
+  { id: 'left', x: 0, y: 0, fixed: { x: true, y: true }, load: { fx: 0, fy: 0 } },
+  { id: 'right', x: 1, y: 0, fixed: { x: false, y: true }, load: { fx: 1000, fy: 0 } },
+];
+
+const edges = [
+  { id: 'member-1', from: 'left', to: 'right', area: 0.01, elastic_modulus: 200e9 },
+];
+
+const performance = computeTrussPerformance(nodes, edges);
+console.log(performance.maxDisplacement);
+```
+
 ## Development
 
 Install dependencies with npm and run the quality gates headlessly:
