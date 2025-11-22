@@ -23,7 +23,7 @@ if (typeof window !== 'undefined' && !window.$) {
 const vis = (typeof window !== 'undefined' && window.vis) || global.vis;
 
 if (!vis) {
-  throw new Error('vis library is required for renderer initialization.');
+  console.error('vis library is required for renderer initialization.');
 }
 
 // create an array with nodes
@@ -141,8 +141,11 @@ let options = {
   },
 };
 
-// Construct initial network
-let network = new vis.Network(container, data, options);
+// Construct initial network (if the visualization library was loaded)
+let network = null;
+if (vis) {
+  network = new vis.Network(container, data, options);
+}
 
 // Add node callback
 $('#add-node').on('click', function () {
@@ -251,7 +254,9 @@ $('#edge-modal-apply').on('click', function () {
 $('#login-modal-apply').on('click', function () {
   $('#loginModal').modal('hide');
   $('#all').removeClass('d-none');
-  network.fit();
+  if (network) {
+    network.fit();
+  }
 });
 
 // Deactive a single button
