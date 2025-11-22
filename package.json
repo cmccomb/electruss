@@ -20,6 +20,11 @@
     "url": "https://github.com/cmccomb/electruss/issues"
   },
   "homepage": "https://github.com/cmccomb/electruss#readme",
+  "build": {
+    "extraResources": [
+      "assets/javascript/vis-network/vis-network.min.js"
+    ]
+  },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
     "electron": "^10.1.1",

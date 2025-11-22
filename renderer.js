@@ -21,35 +21,104 @@ if (typeof window !== 'undefined' && !window.$) {
 }
 
 const vis = (typeof window !== 'undefined' && window.vis) || global.vis;
+const hasVis = Boolean(vis);
 
-if (!vis) {
-  throw new Error('vis library is required for renderer initialization.');
+const createNoopNetwork = () => ({
+  addNodeMode: () => {},
+  disableEditMode: () => {},
+  editNode: () => {},
+  addEdgeMode: () => {},
+  editEdgeMode: () => {},
+  deleteSelected: () => {},
+  fit: () => {},
+  setOptions: () => {},
+});
+
+const createNoopDataSet = (initialItems = []) => {
+  const store = new Map();
+  let nextId = 1;
+
+  const upsert = (item) => {
+    const id = item.id ?? nextId++;
+    const existing = store.get(id) || { id };
+    store.set(id, { ...existing, ...item, id });
+    return id;
+  };
+
+  initialItems.forEach((item) => {
+    upsert(item);
+  });
+
+  return {
+    add: (item) => {
+      if (Array.isArray(item)) {
+        return item.map((entry) => upsert(entry));
+      }
+      return upsert(item);
+    },
+    get: (id) => store.get(id),
+    getIds: () => Array.from(store.keys()),
+    remove: (id) => store.delete(id),
+    update: (item) => {
+      if (!item || typeof item !== 'object') {
+        return;
+      }
+      upsert(item);
+    },
+  };
+};
+
+if (!hasVis) {
+  console.error('vis library is required for renderer initialization.');
 }
 
 // create an array with nodes
-let nodes = new vis.DataSet([
-  {
-    x: -100,
-    y: 0,
-    fixed: true,
-    physics: false,
-    shape: 'image',
-    image: xy_fixed_image,
-    size: 25,
-  },
-  {
-    x: 100,
-    y: 0,
-    fixed: true,
-    physics: false,
-    shape: 'image',
-    image: xy_fixed_image,
-    size: 25,
-  },
-]);
+let nodes = hasVis
+  ? new vis.DataSet([
+      {
+        x: -100,
+        y: 0,
+        fixed: true,
+        physics: false,
+        shape: 'image',
+        image: xy_fixed_image,
+        size: 25,
+      },
+      {
+        x: 100,
+        y: 0,
+        fixed: true,
+        physics: false,
+        shape: 'image',
+        image: xy_fixed_image,
+        size: 25,
+      },
+    ])
+  : createNoopDataSet([
+      {
+        id: 1,
+        x: -100,
+        y: 0,
+        fixed: { x: true, y: true },
+        physics: false,
+        shape: 'image',
+        image: xy_fixed_image,
+        size: 25,
+      },
+      {
+        id: 2,
+        x: 100,
+        y: 0,
+        fixed: { x: true, y: true },
+        physics: false,
+        shape: 'image',
+        image: xy_fixed_image,
+        size: 25,
+      },
+    ]);
 
 // create an array with edges
-let edges = new vis.DataSet([]);
+let edges = hasVis ? new vis.DataSet([]) : createNoopDataSet();
 
 function update_edges() {
   // Get all widths
@@ -141,8 +210,10 @@ let options = {
   },
 };
 
-// Construct initial network
-let network = new vis.Network(container, data, options);
+// Construct initial network (if the visualization library was loaded)
+let network = hasVis
+  ? new vis.Network(container, data, options)
+  : createNoopNetwork();
 
 // Add node callback
 $('#add-node').on('click', function () {
@@ -251,7 +322,9 @@ $('#edge-modal-apply').on('click', function () {
 $('#login-modal-apply').on('click', function () {
   $('#loginModal').modal('hide');
   $('#all').removeClass('d-none');
-  network.fit();
+  if (network) {
+    network.fit();
+  }
 });
 
 // Deactive a single button
