@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Provide Electron binary
+        run: |
+          mkdir -p ~/.cache/electron/v10.1.1
+          curl -L https://github.com/electron/electron/releases/download/v10.1.1/electron-v10.1.1-linux-x64.zip -o ~/.cache/electron/v10.1.1/electron-v10.1.1-linux-x64.zip
+          unzip ~/.cache/electron/v10.1.1/electron-v10.1.1-linux-x64.zip -d node_modules/electron/dist
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit Tests
+        run: npm test
+
+      - name: UI Tests
+        env:
+          ELECTRUSS_HEADLESS: 'true'
+        run: npm run test:ui
