@@ -103,67 +103,41 @@ if (!hasVis) {
   console.error('vis library is required for renderer initialization.');
 }
 
-// create an array with nodes
-let nodes = hasVis
-  ? new vis.DataSet([
-      {
-        x: -100,
-        y: 0,
-        fixed: true,
-        physics: false,
-        shape: 'image',
-        image: xy_fixed_image,
-        size: 25,
-      },
-      {
-        x: 100,
-        y: 0,
-        fixed: true,
-        physics: false,
-        shape: 'image',
-        image: xy_fixed_image,
-        size: 25,
-      },
-    ])
-  : createNoopDataSet([
-      {
-        id: 1,
-        x: -100,
-        y: 0,
-        fixed: { x: true, y: true },
-        physics: false,
-        shape: 'image',
-        image: xy_fixed_image,
-        size: 25,
-      },
-      {
-        id: 2,
-        x: 100,
-        y: 0,
-        fixed: { x: true, y: true },
-        physics: false,
-        shape: 'image',
-        image: xy_fixed_image,
-        size: 25,
-      },
-    ]);
-
-// create an array with edges
-let edges = hasVis ? new vis.DataSet([]) : createNoopDataSet();
-
-function update_edges() {
-  // Get all widths
-  let ids = edges.getIds();
-  if (ids.length === 0) {
-    return;
-  }
-
+const normalizeFixedState = (fixed) => {
   if (typeof fixed === 'boolean') {
     return { x: fixed, y: fixed };
   }
 
+  if (fixed && typeof fixed === 'object') {
+    return {
+      x: Boolean(fixed.x),
+      y: Boolean(fixed.y),
+    };
+  }
+
   return { x: false, y: false };
-}
+};
+
+const isNodePayload = (node) =>
+  node !== undefined &&
+  typeof node === 'object' &&
+  typeof node.x === 'number' &&
+  typeof node.y === 'number' &&
+  typeof node.physics === 'boolean' &&
+  typeof node.shape === 'string' &&
+  typeof node.size === 'number' &&
+  node.fixed !== undefined;
+
+const isEdgePayload = (edge) =>
+  edge !== undefined &&
+  typeof edge === 'object' &&
+  edge.from !== undefined &&
+  edge.to !== undefined &&
+  typeof edge.area === 'number' &&
+  typeof edge.elastic_modulus === 'number' &&
+  typeof edge.width === 'number' &&
+  typeof edge.smooth === 'boolean' &&
+  typeof edge.color === 'string';
 
 class RendererModule {
   constructor(visLibrary, jqueryInstance) {
@@ -173,15 +147,17 @@ class RendererModule {
     /** @type {vis.DataSet<NodePayload>} */
     this.nodes = this.createInitialNodes();
     /** @type {vis.DataSet<EdgePayload>} */
-    this.edges = new this.vis.DataSet([]);
+    this.edges = hasVis ? new this.vis.DataSet([]) : createNoopDataSet();
 
     this.container = document.getElementById('network');
     this.options = this.createOptions();
-    this.network = new this.vis.Network(
-      this.container,
-      { nodes: this.nodes, edges: this.edges },
-      this.options
-    );
+    this.network = hasVis
+      ? new this.vis.Network(
+          this.container,
+          { nodes: this.nodes, edges: this.edges },
+          this.options
+        )
+      : createNoopNetwork();
 
     this.registerEventHandlers();
   }
@@ -208,7 +184,9 @@ class RendererModule {
       },
     ];
 
-    return new this.vis.DataSet(initialNodes);
+    return hasVis
+      ? new this.vis.DataSet(initialNodes)
+      : createNoopDataSet(initialNodes);
   }
 
   createOptions() {
@@ -425,21 +403,10 @@ class RendererModule {
       if (!isEdgePayload(updatedEdge)) {
         throw new Error('Invalid edge data submitted.');
       }
-
-// Construct initial network (if the visualization library was loaded)
-let network = hasVis
-  ? new vis.Network(container, data, options)
-  : createNoopNetwork();
-
-// Add node callback
-$('#add-node').on('click', function () {
-  deactivate('#add-edge');
-  deactivate('#drag-node');
-  $('#add-node').toggleClass('active');
-  if ($('#add-node').hasClass('active') === true) {
-    network.addNodeMode();
-  } else {
-    network.disableEditMode();
+      this.edges.update(updatedEdge);
+      this.$('#edgeModal').modal('hide');
+      this.updateEdges();
+    });
   }
 
   updateEdges() {
@@ -479,33 +446,6 @@ $('#add-node').on('click', function () {
     this.deactivate('#add-edge');
     this.deactivate('#drag-node');
   }
-  nodes.update(node);
-  $('#nodeModal').modal('hide');
-});
-
-// Modal edge apply callback
-$('#edge-modal-apply').on('click', function () {
-  let edge = edges.get($('#edgeModalLabel').val());
-  edge.area = parseFloat($('#edge-area').val());
-  edge.elastic_modulus = parseFloat($('#edge-elastic-modulus').val());
-  edges.update(edge);
-  $('#edgeModal').modal('hide');
-  update_edges();
-});
-
-// Modal login callback
-$('#login-modal-apply').on('click', function () {
-  $('#loginModal').modal('hide');
-  $('#all').removeClass('d-none');
-  if (network) {
-    network.fit();
-  }
-});
-
-// Deactive a single button
-function deactivate(name) {
-  $(name).removeClass('active');
-}
 
   static saveToJSON(nodes, edges) {
     const network = { time: new Date(), nodes: [], edges: [] };
