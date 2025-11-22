@@ -30,6 +30,10 @@ Install dependencies with npm and run the quality gates headlessly:
 - `npm test` to execute Jest unit tests against renderer helpers.
 - `npm run test:ui` to launch Playwright browser and Electron flows in headless mode. The pre-test helper installs the libXcursor, libxss, libxtst, libgdk-pixbuf, and libgtk runtime dependencies when apt-get is available and writable; otherwise it warns and continues. It always downloads the Electron binary (even when install scripts are skipped) and ensures Playwright Chromium is present before executing tests.
 
+### Running analyses in the UI
+
+Use the **Analyze Truss** toolbar button to run the front-end truss solver. The renderer collects the nodes and edges currently drawn in the network view, validates the geometry and properties, and renders the maximum displacement and member axial forces in-line beneath the toolbar.
+
 ## Production builds
 
 - Electron windows are created with `contextIsolation` enabled and the remote module disabled. Keep `ELECTRUSS_ENABLE_DEVTOOLS` unset (or set to `false`) to block DevTools in production binaries; opt in explicitly during development when debugging is required.
