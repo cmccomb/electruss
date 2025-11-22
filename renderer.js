@@ -1,17 +1,48 @@
-const editable_color = 'grey';
-const edge_color = 'lightgrey';
+/**
+ * @typedef {Object} FixedState
+ * @property {boolean} x
+ * @property {boolean} y
+ */
 
-const min_edge_width = 5;
-const max_edge_width = 25;
+/**
+ * @typedef {Object} NodePayload
+ * @property {number} x
+ * @property {number} y
+ * @property {FixedState} fixed
+ * @property {boolean} physics
+ * @property {string} shape
+ * @property {string} [image]
+ * @property {number} size
+ * @property {string} [color]
+ * @property {number | string} [id]
+ */
 
-const x_fixed_image = './assets/images/xfixed.png';
-const y_fixed_image = './assets/images/yfixed.png';
-const xy_fixed_image = './assets/images/xyfixed.png';
+/**
+ * @typedef {Object} EdgePayload
+ * @property {number | string} id
+ * @property {number | string} from
+ * @property {number | string} to
+ * @property {number} area
+ * @property {number} elastic_modulus
+ * @property {number} width
+ * @property {boolean} smooth
+ * @property {string} color
+ */
 
-const scale_factor = 10;
+const EDITABLE_COLOR = 'grey';
+const EDGE_COLOR = 'lightgrey';
 
-const default_elastic_modulus = 10 ** 9;
-const default_area = 1.0;
+const MIN_EDGE_WIDTH = 5;
+const MAX_EDGE_WIDTH = 25;
+
+const X_FIXED_IMAGE = './assets/images/xfixed.png';
+const Y_FIXED_IMAGE = './assets/images/yfixed.png';
+const XY_FIXED_IMAGE = './assets/images/xyfixed.png';
+
+const SCALE_FACTOR = 10;
+
+const DEFAULT_ELASTIC_MODULUS = 10 ** 9;
+const DEFAULT_AREA = 1.0;
 
 const $ =
   (typeof window !== 'undefined' && (window.$ || window.jQuery)) ||
@@ -26,282 +57,407 @@ if (!vis) {
   throw new Error('vis library is required for renderer initialization.');
 }
 
-// create an array with nodes
-let nodes = new vis.DataSet([
-  {
-    x: -100,
-    y: 0,
-    fixed: true,
-    physics: false,
-    shape: 'image',
-    image: xy_fixed_image,
-    size: 25,
-  },
-  {
-    x: 100,
-    y: 0,
-    fixed: true,
-    physics: false,
-    shape: 'image',
-    image: xy_fixed_image,
-    size: 25,
-  },
-]);
-
-// create an array with edges
-let edges = new vis.DataSet([]);
-
-function update_edges() {
-  // Get all widths
-  let ids = edges.getIds();
-  if (ids.length === 0) {
-    return;
-  }
-  let areas = [];
-  for (let i = 0; i < ids.length; i++) {
-    areas.push(edges.get(ids[i]).area);
-  }
-
-  let minarea = Math.min(...areas);
-  let darea = Math.max(...areas) - minarea;
-
-  if (darea !== 0) {
-    for (let i = 0; i < ids.length; i++) {
-      let edge = edges.get(ids[i]);
-      let scaled_width = (areas[i] - minarea) / darea;
-      edge.width =
-        scaled_width * (max_edge_width - min_edge_width) + min_edge_width;
-      edges.update(edge);
-    }
-  }
+/**
+ * @param {unknown} candidate
+ * @returns {candidate is FixedState}
+ */
+function isFixedState(candidate) {
+  return (
+    Boolean(candidate) &&
+    typeof candidate === 'object' &&
+    'x' in candidate &&
+    'y' in candidate &&
+    typeof candidate.x === 'boolean' &&
+    typeof candidate.y === 'boolean'
+  );
 }
 
-// Identify teh container for hte network drawing
-let container = document.getElementById('network');
+/**
+ * @param {unknown} candidate
+ * @returns {candidate is NodePayload}
+ */
+function isNodePayload(candidate) {
+  return (
+    Boolean(candidate) &&
+    typeof candidate === 'object' &&
+    Number.isFinite(candidate.x) &&
+    Number.isFinite(candidate.y) &&
+    isFixedState(candidate.fixed) &&
+    typeof candidate.physics === 'boolean' &&
+    typeof candidate.shape === 'string' &&
+    typeof candidate.size === 'number'
+  );
+}
 
-// Define data
-let data = {
-  nodes: nodes,
-  edges: edges,
-};
+/**
+ * @param {unknown} candidate
+ * @returns {candidate is EdgePayload}
+ */
+function isEdgePayload(candidate) {
+  return (
+    Boolean(candidate) &&
+    typeof candidate === 'object' &&
+    'id' in candidate &&
+    'from' in candidate &&
+    'to' in candidate &&
+    Number.isFinite(candidate.area) &&
+    Number.isFinite(candidate.elastic_modulus) &&
+    typeof candidate.color === 'string' &&
+    typeof candidate.width === 'number' &&
+    typeof candidate.smooth === 'boolean'
+  );
+}
 
-// Define a hell of a lot of options
-let options = {
-  autoResize: true,
-  height: '100%',
-  width: '100%',
-  locale: 'en',
-  interaction: {
-    dragNodes: false,
-    selectConnectedEdges: false,
-  },
-  manipulation: {
-    enabled: false,
-    addNode: function (nodeData, callback) {
-      nodeData.label = undefined;
-      nodeData.physics = false;
-      nodeData.color = editable_color;
-      callback(nodeData);
-      network.addNodeMode();
-    },
-    editNode: function (nodeData, callback) {
-      console.log(nodeData);
-      $('#nodeModalLabel').val(nodeData.id);
-      $('#node-x-fixed').prop('checked', nodeData.fixed.x);
-      $('#node-y-fixed').prop('checked', nodeData.fixed.y);
-      $('#node-x-coord').val(nodeData.x);
-      $('#node-y-coord').val(nodeData.y);
-      $('#nodeModal').modal('show');
-      callback(nodeData);
-    },
-    addEdge: function (edgeData, callback) {
-      if (edgeData.to !== edgeData.from) {
-        edgeData.smooth = false;
-        edgeData.color = edge_color;
-        edgeData.width = 5;
-        edgeData.area = default_area;
-        edgeData.elastic_modulus = default_elastic_modulus;
-        callback(edgeData);
-      }
-      update_edges();
-      network.addEdgeMode();
-    },
-    editEdge: {
-      editWithoutDrag: function (edgeData, callback) {
-        edgeData = edges.get(edgeData.id);
-        $('#edgeModalLabel').val(edgeData.id);
-        $('#edgeModal').modal('show');
-        $('#edge-area').val(edgeData.area);
-        $('#edge-elastic-modulus').val(edgeData.elastic_modulus);
-        callback(edgeData);
+/**
+ * @param {unknown} fixed
+ * @returns {FixedState}
+ */
+function normalizeFixedState(fixed) {
+  if (isFixedState(fixed)) {
+    return fixed;
+  }
+
+  if (typeof fixed === 'boolean') {
+    return { x: fixed, y: fixed };
+  }
+
+  return { x: false, y: false };
+}
+
+class RendererModule {
+  constructor(visLibrary, jqueryInstance) {
+    this.vis = visLibrary;
+    this.$ = jqueryInstance;
+
+    /** @type {vis.DataSet<NodePayload>} */
+    this.nodes = this.createInitialNodes();
+    /** @type {vis.DataSet<EdgePayload>} */
+    this.edges = new this.vis.DataSet([]);
+
+    this.container = document.getElementById('network');
+    this.options = this.createOptions();
+    this.network = new this.vis.Network(this.container, { nodes: this.nodes, edges: this.edges }, this.options);
+
+    this.registerEventHandlers();
+  }
+
+  createInitialNodes() {
+    const initialNodes = [
+      {
+        x: -100,
+        y: 0,
+        fixed: { x: true, y: true },
+        physics: false,
+        shape: 'image',
+        image: XY_FIXED_IMAGE,
+        size: 25,
       },
-    },
-    deleteNode: true,
-    deleteEdge: true,
-  },
-};
+      {
+        x: 100,
+        y: 0,
+        fixed: { x: true, y: true },
+        physics: false,
+        shape: 'image',
+        image: XY_FIXED_IMAGE,
+        size: 25,
+      },
+    ];
 
-// Construct initial network
-let network = new vis.Network(container, data, options);
-
-// Add node callback
-$('#add-node').on('click', function () {
-  deactivate('#add-edge');
-  deactivate('#drag-node');
-  $('#add-node').toggleClass('active');
-  if ($('#add-node').hasClass('active') === true) {
-    network.addNodeMode();
-  } else {
-    network.disableEditMode();
+    return new this.vis.DataSet(initialNodes);
   }
-});
 
-// Edit node cal
-$('#edit-node').on('click', function () {
-  deactivate_all();
-  network.editNode();
-});
+  createOptions() {
+    return {
+      autoResize: true,
+      height: '100%',
+      width: '100%',
+      locale: 'en',
+      interaction: {
+        dragNodes: false,
+        selectConnectedEdges: false,
+      },
+      manipulation: {
+        enabled: false,
+        addNode: (nodeData, callback) => {
+          const normalizedNode = {
+            ...nodeData,
+            label: undefined,
+            physics: false,
+            color: EDITABLE_COLOR,
+            fixed: normalizeFixedState(nodeData.fixed),
+            x: Number(nodeData.x ?? 0),
+            y: Number(nodeData.y ?? 0),
+            shape: 'ellipse',
+            size: 25,
+          };
 
-// Drag node callback
-$('#drag-node').on('click', function () {
-  deactivate('#add-edge');
-  deactivate('#add-node');
-  $('#drag-node').toggleClass('active');
-  if ($('#drag-node').hasClass('active') === true) {
-    options.interaction.dragNodes = true;
-    network.setOptions(options);
-  } else {
-    options.interaction.dragNodes = false;
-    network.setOptions(options);
+          if (!isNodePayload(normalizedNode)) {
+            throw new Error('Invalid node data received.');
+          }
+
+          callback(normalizedNode);
+          this.network.addNodeMode();
+        },
+        editNode: (nodeData, callback) => {
+          const targetNode = this.nodes.get(nodeData.id);
+          if (!targetNode || !isNodePayload(targetNode)) {
+            throw new Error('Unable to edit node with invalid data.');
+          }
+          const normalizedFixed = normalizeFixedState(targetNode.fixed);
+
+          this.$('#nodeModalLabel').val(nodeData.id);
+          this.$('#node-x-fixed').prop('checked', normalizedFixed.x);
+          this.$('#node-y-fixed').prop('checked', normalizedFixed.y);
+          this.$('#node-x-coord').val(targetNode.x);
+          this.$('#node-y-coord').val(targetNode.y);
+          this.$('#nodeModal').modal('show');
+          callback(nodeData);
+        },
+        addEdge: (edgeData, callback) => {
+          if (edgeData.to !== edgeData.from) {
+            const normalizedEdge = {
+              ...edgeData,
+              smooth: false,
+              color: EDGE_COLOR,
+              width: MIN_EDGE_WIDTH,
+              area: DEFAULT_AREA,
+              elastic_modulus: DEFAULT_ELASTIC_MODULUS,
+            };
+
+            const edgeId = normalizedEdge.id ?? `${normalizedEdge.from}-${normalizedEdge.to}`;
+            const completeEdge = { ...normalizedEdge, id: edgeId };
+
+            if (!isEdgePayload(completeEdge)) {
+              throw new Error('Invalid edge data received.');
+            }
+
+            callback(completeEdge);
+          }
+          this.updateEdges();
+          this.network.addEdgeMode();
+        },
+        editEdge: {
+          editWithoutDrag: (edgeData, callback) => {
+            const existingEdge = this.edges.get(edgeData.id);
+            if (!existingEdge || !isEdgePayload(existingEdge)) {
+              throw new Error('Unable to edit edge with invalid data.');
+            }
+            this.$('#edgeModalLabel').val(existingEdge.id);
+            this.$('#edgeModal').modal('show');
+            this.$('#edge-area').val(existingEdge.area);
+            this.$('#edge-elastic-modulus').val(existingEdge.elastic_modulus);
+            callback(existingEdge);
+          },
+        },
+        deleteNode: true,
+        deleteEdge: true,
+      },
+    };
   }
-});
 
-// Add Edge callback
-$('#add-edge').on('click', function () {
-  deactivate('#add-node');
-  deactivate('#drag-node');
-  $('#add-edge').toggleClass('active');
-  if ($('#add-edge').hasClass('active') === true) {
-    network.addEdgeMode();
-  } else {
-    network.disableEditMode();
+  registerEventHandlers() {
+    this.$('#add-node').on('click', () => {
+      this.deactivate('#add-edge');
+      this.deactivate('#drag-node');
+      this.$('#add-node').toggleClass('active');
+      if (this.$('#add-node').hasClass('active') === true) {
+        this.network.addNodeMode();
+      } else {
+        this.network.disableEditMode();
+      }
+    });
+
+    this.$('#edit-node').on('click', () => {
+      this.deactivateAll();
+      this.network.editNode();
+    });
+
+    this.$('#drag-node').on('click', () => {
+      this.deactivate('#add-edge');
+      this.deactivate('#add-node');
+      this.$('#drag-node').toggleClass('active');
+      if (this.$('#drag-node').hasClass('active') === true) {
+        const updatedOptions = {
+          ...this.options,
+          interaction: { ...this.options.interaction, dragNodes: true },
+        };
+        this.options = updatedOptions;
+        this.network.setOptions(this.options);
+      } else {
+        const updatedOptions = {
+          ...this.options,
+          interaction: { ...this.options.interaction, dragNodes: false },
+        };
+        this.options = updatedOptions;
+        this.network.setOptions(this.options);
+      }
+    });
+
+    this.$('#add-edge').on('click', () => {
+      this.deactivate('#add-node');
+      this.deactivate('#drag-node');
+      this.$('#add-edge').toggleClass('active');
+      if (this.$('#add-edge').hasClass('active') === true) {
+        this.network.addEdgeMode();
+      } else {
+        this.network.disableEditMode();
+      }
+    });
+
+    this.$('#edit-edge').on('click', () => {
+      this.deactivateAll();
+      this.network.editEdgeMode();
+      this.updateEdges();
+    });
+
+    this.$('#delete').on('click', () => {
+      this.deactivateAll();
+      this.network.deleteSelected();
+      this.updateEdges();
+    });
+
+    this.$('#zoom-to-fit').on('click', () => {
+      this.deactivateAll();
+      this.network.disableEditMode();
+      this.network.fit({ animation: true });
+    });
+
+    this.$('#node-modal-apply').on('click', () => {
+      const nodeId = this.$('#nodeModalLabel').val();
+      const node = this.nodes.get(nodeId);
+      const fixedState = {
+        x: this.$('#node-x-fixed').prop('checked'),
+        y: this.$('#node-y-fixed').prop('checked'),
+      };
+      const updatedNode = {
+        ...node,
+        fixed: fixedState,
+        x: parseFloat(this.$('#node-x-coord').val()),
+        y: parseFloat(this.$('#node-y-coord').val()),
+      };
+
+      if (!isNodePayload(updatedNode)) {
+        throw new Error('Invalid node data submitted.');
+      }
+
+      if (updatedNode.fixed.x === true && updatedNode.fixed.y === false) {
+        updatedNode.shape = 'image';
+        updatedNode.image = X_FIXED_IMAGE;
+        updatedNode.size = 12.5;
+      } else if (updatedNode.fixed.x === false && updatedNode.fixed.y === true) {
+        updatedNode.shape = 'image';
+        updatedNode.image = Y_FIXED_IMAGE;
+        updatedNode.size = 12.5;
+      } else if (updatedNode.fixed.x === true && updatedNode.fixed.y === true) {
+        updatedNode.shape = 'image';
+        updatedNode.image = XY_FIXED_IMAGE;
+        updatedNode.size = 25;
+      } else if (updatedNode.fixed.x === false && updatedNode.fixed.y === false) {
+        updatedNode.shape = 'ellipse';
+        updatedNode.size = 25;
+        updatedNode.color = EDITABLE_COLOR;
+      }
+      this.nodes.update(updatedNode);
+      this.$('#nodeModal').modal('hide');
+    });
+
+    this.$('#edge-modal-apply').on('click', () => {
+      const edge = this.edges.get(this.$('#edgeModalLabel').val());
+      const updatedEdge = {
+        ...edge,
+        area: parseFloat(this.$('#edge-area').val()),
+        elastic_modulus: parseFloat(this.$('#edge-elastic-modulus').val()),
+      };
+
+      if (!isEdgePayload(updatedEdge)) {
+        throw new Error('Invalid edge data submitted.');
+      }
+
+      this.edges.update(updatedEdge);
+      this.$('#edgeModal').modal('hide');
+      this.updateEdges();
+    });
+
+    this.$('#login-modal-apply').on('click', () => {
+      this.$('#loginModal').modal('hide');
+      this.$('#all').removeClass('d-none');
+      this.network.fit();
+    });
   }
-});
 
-// Edit Edge Callback
-$('#edit-edge').on('click', function () {
-  deactivate_all();
-  network.editEdgeMode();
-  update_edges();
-});
+  updateEdges() {
+    const ids = this.edges.getIds();
+    if (ids.length === 0) {
+      return;
+    }
 
-// Delete selected callback
-$('#delete').on('click', function () {
-  deactivate_all();
-  network.deleteSelected();
-  update_edges();
-});
+    const edgePayloads = ids
+      .map((edgeId) => this.edges.get(edgeId))
+      .filter((edge) => isEdgePayload(edge));
 
-// Zoom to fit callback
-$('#zoom-to-fit').on('click', function () {
-  deactivate_all();
-  network.disableEditMode();
-  network.fit({ animation: true });
-});
+    if (edgePayloads.length === 0) {
+      return;
+    }
 
-// Modal node apply callback
-$('#node-modal-apply').on('click', function () {
-  let node = nodes.get($('#nodeModalLabel').val());
-  node.fixed.x = $('#node-x-fixed').prop('checked');
-  node.fixed.y = $('#node-y-fixed').prop('checked');
-  node.x = parseFloat($('#node-x-coord').val());
-  node.y = parseFloat($('#node-y-coord').val());
-  if (node.fixed.x === true && node.fixed.y === false) {
-    node.shape = 'image';
-    node.image = x_fixed_image;
-    node.size = 12.5;
-  } else if (node.fixed.x === false && node.fixed.y === true) {
-    node.shape = 'image';
-    node.image = y_fixed_image;
-    node.size = 12.5;
-  } else if (node.fixed.x === true && node.fixed.y === true) {
-    node.shape = 'image';
-    node.image = xy_fixed_image;
-    node.size = 25;
-  } else if (node.fixed.x === false && node.fixed.y === false) {
-    node.shape = 'ellipse';
-    node.size = 25;
-    node.color = editable_color;
+    const areas = edgePayloads.map((edge) => edge.area);
+    const minarea = Math.min(...areas);
+    const darea = Math.max(...areas) - minarea;
+
+    edgePayloads.forEach((edge, index) => {
+      if (darea !== 0) {
+        const scaledWidth = (areas[index] - minarea) / darea;
+        const width = scaledWidth * (MAX_EDGE_WIDTH - MIN_EDGE_WIDTH) + MIN_EDGE_WIDTH;
+        this.edges.update({ ...edge, width });
+      }
+    });
   }
-  nodes.update(node);
-  $('#nodeModal').modal('hide');
-});
 
-// Modal edge apply callback
-$('#edge-modal-apply').on('click', function () {
-  let edge = edges.get($('#edgeModalLabel').val());
-  edge.area = parseFloat($('#edge-area').val());
-  edge.elastic_modulus = parseFloat($('#edge-elastic-modulus').val());
-  edges.update(edge);
-  $('#edgeModal').modal('hide');
-  update_edges();
-});
+  deactivate(name) {
+    this.$(name).removeClass('active');
+  }
 
-// Modal login callback
-$('#login-modal-apply').on('click', function () {
-  $('#loginModal').modal('hide');
-  $('#all').removeClass('d-none');
-  network.fit();
-});
+  deactivateAll() {
+    this.deactivate('#add-node');
+    this.deactivate('#add-edge');
+    this.deactivate('#drag-node');
+  }
 
-// Deactive a single button
-function deactivate(name) {
-  $(name).removeClass('active');
+  static saveToJSON(nodes, edges) {
+    const network = { time: new Date(), nodes: [], edges: [] };
+    const nodeIds = nodes.getIds();
+    for (let i = 0; i < nodeIds.length; i += 1) {
+      network.nodes.push(nodes.get(nodeIds[i]));
+    }
+
+    const edgeIds = edges.getIds();
+    for (let i = 0; i < edgeIds.length; i += 1) {
+      network.edges.push(edges.get(edgeIds[i]));
+    }
+
+    return JSON.stringify(network);
+  }
 }
 
-// Deactive all buttons
-function deactivate_all() {
-  deactivate('#add-node');
-  deactivate('#add-edge');
-  deactivate('#drag-node');
-}
-
-// Convert canvas to simulation units
 function canv2sim(node) {
-  return [node.x[0] / scale_factor, -node.y[1] / scale_factor];
+  return [node.x[0] / SCALE_FACTOR, -node.y[1] / SCALE_FACTOR];
 }
 
-// Convert simulation units to canvas units
 function sim2canv(node) {
-  return [node.x[0] * scale_factor, -node.y[1] * scale_factor];
+  return [node.x[0] * SCALE_FACTOR, -node.y[1] * SCALE_FACTOR];
 }
 
-// Save network to json string
-function save_to_JSON(nodes, edges) {
-  let network = { time: new Date(), nodes: [], edges: [] };
-  let node_ids = nodes.getIds();
-  for (let i = 0; i < node_ids.length; i++) {
-    network.nodes.push(nodes.get(node_ids[i]));
-  }
-
-  let edge_ids = edges.getIds();
-  for (let i = 0; i < edge_ids.length; i++) {
-    network.edges.push(edges.get(edge_ids[i]));
-  }
-
-  return JSON.stringify(network);
-}
+const rendererModule = new RendererModule(vis, $);
 
 const rendererApi = {
-  update_edges,
-  deactivate,
-  deactivate_all,
-  save_to_JSON,
+  update_edges: () => rendererModule.updateEdges(),
+  deactivate: (selector) => rendererModule.deactivate(selector),
+  deactivate_all: () => rendererModule.deactivateAll(),
+  save_to_JSON: (nodes, edges) => RendererModule.saveToJSON(nodes, edges),
   canv2sim,
   sim2canv,
-  getNetwork: () => network,
-  getNodes: () => nodes,
-  getEdges: () => edges,
+  getNetwork: () => rendererModule.network,
+  getNodes: () => rendererModule.nodes,
+  getEdges: () => rendererModule.edges,
 };
 
 if (typeof window !== 'undefined') {

@@ -124,14 +124,50 @@ describe('renderer interactions', () => {
 
   it('scales edge widths based on area', () => {
     const edges = renderer.getEdges();
-    edges.update({ id: 'a', area: 1, width: 0 });
-    edges.update({ id: 'b', area: 3, width: 0 });
+    edges.update({
+      id: 'a',
+      from: 1,
+      to: 2,
+      area: 1,
+      width: 0,
+      color: 'lightgrey',
+      smooth: false,
+      elastic_modulus: 1,
+    });
+    edges.update({
+      id: 'b',
+      from: 2,
+      to: 3,
+      area: 3,
+      width: 0,
+      color: 'lightgrey',
+      smooth: false,
+      elastic_modulus: 1,
+    });
 
     renderer.update_edges();
 
     const first = edges.get('a');
     const second = edges.get('b');
     expect(first.width).toBeLessThan(second.width);
+  });
+
+  it('skips width updates for edges missing required values', () => {
+    const edges = renderer.getEdges();
+    edges.update({
+      id: 'c',
+      from: 3,
+      to: 4,
+      area: Number.NaN,
+      width: 10,
+      color: 'lightgrey',
+      smooth: false,
+      elastic_modulus: 1,
+    });
+
+    renderer.update_edges();
+
+    expect(edges.get('c').width).toBe(10);
   });
 
   it('toggles edge creation mode on click', () => {
