@@ -7,6 +7,7 @@
     "start": "electron .",
     "lint": "eslint . --ext .js && prettier --check .",
     "test": "jest",
+    "pretest:ui": "DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y libxcursor1 libxss1 libxtst6 libgdk-pixbuf-2.0-0 libgtk-3-0 && node node_modules/electron/install.js && npx playwright install --with-deps chromium",
     "test:ui": "xvfb-run -a playwright test"
   },
   "repository": {
