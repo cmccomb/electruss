@@ -1,6 +1,14 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
 
 const isHeadless = process.env.ELECTRUSS_HEADLESS === 'true';
+const enableDevTools = process.env.ELECTRUSS_ENABLE_DEVTOOLS === 'true';
+
+ipcMain.handle('app:get-metadata', () => ({
+  devToolsEnabled: enableDevTools,
+  headless: isHeadless,
+  version: app.getVersion(),
+}));
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -8,13 +16,17 @@ function createWindow() {
     height: 800,
     show: !isHeadless,
     webPreferences: {
+      contextIsolation: true,
+      devTools: enableDevTools,
+      enableRemoteModule: false,
       nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
   win.loadFile('index.html');
 
-  if (!isHeadless) {
+  if (!isHeadless && enableDevTools) {
     win.webContents.openDevTools();
   }
 }
