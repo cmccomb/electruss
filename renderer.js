@@ -136,7 +136,11 @@ class RendererModule {
 
     this.container = document.getElementById('network');
     this.options = this.createOptions();
-    this.network = new this.vis.Network(this.container, { nodes: this.nodes, edges: this.edges }, this.options);
+    this.network = new this.vis.Network(
+      this.container,
+      { nodes: this.nodes, edges: this.edges },
+      this.options
+    );
 
     this.registerEventHandlers();
   }
@@ -224,7 +228,9 @@ class RendererModule {
               elastic_modulus: DEFAULT_ELASTIC_MODULUS,
             };
 
-            const edgeId = normalizedEdge.id ?? `${normalizedEdge.from}-${normalizedEdge.to}`;
+            const edgeId =
+              normalizedEdge.id ??
+              `${normalizedEdge.from}-${normalizedEdge.to}`;
             const completeEdge = { ...normalizedEdge, id: edgeId };
 
             if (!isEdgePayload(completeEdge)) {
@@ -344,7 +350,10 @@ class RendererModule {
         updatedNode.shape = 'image';
         updatedNode.image = X_FIXED_IMAGE;
         updatedNode.size = 12.5;
-      } else if (updatedNode.fixed.x === false && updatedNode.fixed.y === true) {
+      } else if (
+        updatedNode.fixed.x === false &&
+        updatedNode.fixed.y === true
+      ) {
         updatedNode.shape = 'image';
         updatedNode.image = Y_FIXED_IMAGE;
         updatedNode.size = 12.5;
@@ -352,7 +361,10 @@ class RendererModule {
         updatedNode.shape = 'image';
         updatedNode.image = XY_FIXED_IMAGE;
         updatedNode.size = 25;
-      } else if (updatedNode.fixed.x === false && updatedNode.fixed.y === false) {
+      } else if (
+        updatedNode.fixed.x === false &&
+        updatedNode.fixed.y === false
+      ) {
         updatedNode.shape = 'ellipse';
         updatedNode.size = 25;
         updatedNode.color = EDITABLE_COLOR;
@@ -406,7 +418,8 @@ class RendererModule {
     edgePayloads.forEach((edge, index) => {
       if (darea !== 0) {
         const scaledWidth = (areas[index] - minarea) / darea;
-        const width = scaledWidth * (MAX_EDGE_WIDTH - MIN_EDGE_WIDTH) + MIN_EDGE_WIDTH;
+        const width =
+          scaledWidth * (MAX_EDGE_WIDTH - MIN_EDGE_WIDTH) + MIN_EDGE_WIDTH;
         this.edges.update({ ...edge, width });
       }
     });
