@@ -44,6 +44,16 @@ const SCALE_FACTOR = 10;
 const DEFAULT_ELASTIC_MODULUS = 10 ** 9;
 const DEFAULT_AREA = 1.0;
 
+const computeTrussPerformanceRef =
+  (typeof window !== 'undefined' && window.computeTrussPerformance) ||
+  (typeof require === 'function'
+    ? require('./performance').computeTrussPerformance
+    : null);
+
+if (!computeTrussPerformanceRef) {
+  throw new Error('computeTrussPerformance dependency is unavailable.');
+}
+
 const $ =
   (typeof window !== 'undefined' && (window.$ || window.jQuery)) ||
   require('jquery');
@@ -328,6 +338,10 @@ class RendererModule {
       this.network.fit({ animation: true });
     });
 
+    this.$('#analyze-truss').on('click', () => {
+      this.analyzeStructure();
+    });
+
     this.$('#node-modal-apply').on('click', () => {
       const nodeId = this.$('#nodeModalLabel').val();
       const node = this.nodes.get(nodeId);
@@ -395,6 +409,95 @@ class RendererModule {
       this.$('#all').removeClass('d-none');
       this.network.fit();
     });
+  }
+
+  buildTrussDefinition() {
+    const nodes = this.nodes
+      .getIds()
+      .map((nodeId) => this.nodes.get(nodeId))
+      .filter((node) => isNodePayload(node))
+      .map((node) => ({
+        id: node.id,
+        x: Number(node.x),
+        y: Number(node.y),
+        fixed: normalizeFixedState(node.fixed),
+        load: node.load ?? { fx: 0, fy: 0 },
+      }));
+
+    const edges = this.edges
+      .getIds()
+      .map((edgeId) => this.edges.get(edgeId))
+      .filter((edge) => isEdgePayload(edge))
+      .map((edge) => ({
+        id: edge.id,
+        from: edge.from,
+        to: edge.to,
+        area: edge.area,
+        elastic_modulus: edge.elastic_modulus,
+      }));
+
+    if (nodes.length === 0) {
+      throw new Error('Add at least one node before running analysis.');
+    }
+
+    if (edges.length === 0) {
+      throw new Error('Connect nodes with at least one edge to analyze.');
+    }
+
+    return { nodes, edges };
+  }
+
+  renderPerformance(performance) {
+    const maxDisplacement = Number(performance.maxDisplacement ?? 0);
+    this.$('#analysis-max-displacement').text(
+      `${maxDisplacement.toExponential(3)} units`
+    );
+
+    const memberList = this.$('#analysis-member-forces');
+    memberList.empty();
+    if (performance.memberForces.length === 0) {
+      memberList.append(
+        this.$('<li></li>')
+          .addClass('list-group-item')
+          .text('No members in model to evaluate.')
+      );
+    } else {
+      performance.memberForces.forEach((member) => {
+        const item = this.$('<li></li>').addClass(
+          'list-group-item d-flex justify-content-between align-items-center'
+        );
+        item.append(this.$('<span></span>').text(member.id));
+        item.append(
+          this.$('<span></span>').text(
+            `${member.axialForce.toExponential(3)} N`
+          )
+        );
+        memberList.append(item);
+      });
+    }
+
+    this.$('#analysis-results').removeClass('d-none');
+  }
+
+  renderAnalysisError(message) {
+    this.$('#analysis-error').text(message).removeClass('d-none');
+  }
+
+  clearAnalysisMessages() {
+    this.$('#analysis-error').addClass('d-none').text('');
+    this.$('#analysis-results').addClass('d-none');
+  }
+
+  analyzeStructure() {
+    this.clearAnalysisMessages();
+    try {
+      const { nodes, edges } = this.buildTrussDefinition();
+      const performance = computeTrussPerformanceRef(nodes, edges);
+      this.renderPerformance(performance);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.renderAnalysisError(message);
+    }
   }
 
   updateEdges() {
@@ -471,6 +574,7 @@ const rendererApi = {
   getNetwork: () => rendererModule.network,
   getNodes: () => rendererModule.nodes,
   getEdges: () => rendererModule.edges,
+  analyze_truss: () => rendererModule.analyzeStructure(),
 };
 
 if (typeof window !== 'undefined') {
