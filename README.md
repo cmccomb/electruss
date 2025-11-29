@@ -2,6 +2,26 @@
 
 An electron app (and webpage) for studying how people design trusses
 
+## Truss performance calculations
+
+Use the `computeTrussPerformance` helper to evaluate 2D trusses programmatically. Nodes define coordinates, support conditions, and optional nodal loads; edges define connectivity and material properties. The helper returns nodal displacements, member axial forces, support reactions, and the maximum displacement magnitude.
+
+```
+const { computeTrussPerformance } = require('./performance');
+
+const nodes = [
+  { id: 'left', x: 0, y: 0, fixed: { x: true, y: true }, load: { fx: 0, fy: 0 } },
+  { id: 'right', x: 1, y: 0, fixed: { x: false, y: true }, load: { fx: 1000, fy: 0 } },
+];
+
+const edges = [
+  { id: 'member-1', from: 'left', to: 'right', area: 0.01, elastic_modulus: 200e9 },
+];
+
+const performance = computeTrussPerformance(nodes, edges);
+console.log(performance.maxDisplacement);
+```
+
 ## Development
 
 Install dependencies with npm and run the quality gates headlessly:
@@ -9,6 +29,10 @@ Install dependencies with npm and run the quality gates headlessly:
 - `npm run lint` to enforce ESLint and Prettier checks.
 - `npm test` to execute Jest unit tests against renderer helpers.
 - `npm run test:ui` to launch Playwright browser and Electron flows in headless mode. The pre-test helper installs the libXcursor, libxss, libxtst, libgdk-pixbuf, and libgtk runtime dependencies when apt-get is available and writable; otherwise it warns and continues. It always downloads the Electron binary (even when install scripts are skipped) and ensures Playwright Chromium is present before executing tests.
+
+### Running analyses in the UI
+
+Use the **Analyze Truss** toolbar button to run the front-end truss solver. The renderer collects the nodes and edges currently drawn in the network view, validates the geometry and properties, and renders the maximum displacement and member axial forces in-line beneath the toolbar.
 
 ## Production builds
 

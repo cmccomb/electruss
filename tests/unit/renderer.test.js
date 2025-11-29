@@ -1,3 +1,14 @@
+jest.mock('../../performance', () => ({
+  computeTrussPerformance: jest.fn(() => ({
+    displacements: new Map(),
+    reactions: new Map(),
+    memberForces: [{ id: 'member-1', axialForce: 123 }],
+    maxDisplacement: 0.001,
+  })),
+}));
+
+let computeTrussPerformance;
+
 class MockDataSet {
   constructor(items = []) {
     this.items = new Map();
@@ -66,12 +77,16 @@ let renderer;
 
 const createRenderer = () => {
   jest.resetModules();
+  jest.clearAllMocks();
+  computeTrussPerformance =
+    require('../../performance').computeTrussPerformance;
   document.body.innerHTML = `
     <button id="add-node" class="active"></button>
     <button id="drag-node" class="active"></button>
     <button id="add-edge"></button>
     <button id="delete"></button>
     <button id="zoom-to-fit"></button>
+    <button id="analyze-truss"></button>
     <div id="network"></div>
     <div id="nodeModal"></div>
     <div id="edgeModal"></div>
@@ -86,6 +101,11 @@ const createRenderer = () => {
     <div id="loginModal"></div>
     <div id="all" class="d-none"></div>
     <button id="login-modal-apply"></button>
+    <div id="analysis-results" class="d-none">
+      <span id="analysis-max-displacement"></span>
+      <ul id="analysis-member-forces"></ul>
+    </div>
+    <div id="analysis-error" class="d-none"></div>
   `;
 
   global.window = window;
@@ -189,6 +209,57 @@ describe('renderer interactions', () => {
       false
     );
     expect(network.calls).toContain('fit');
+  });
+
+  it('computes performance and renders summary', () => {
+    const edges = renderer.getEdges();
+    edges.update({
+      id: 'edge-1',
+      from: 1,
+      to: 2,
+      area: 1,
+      width: 5,
+      color: 'lightgrey',
+      smooth: false,
+      elastic_modulus: 1,
+    });
+
+    document.getElementById('analyze-truss').click();
+
+    expect(computeTrussPerformance).toHaveBeenCalled();
+    expect(
+      document.getElementById('analysis-results').classList.contains('d-none')
+    ).toBe(false);
+    expect(
+      document.getElementById('analysis-max-displacement').textContent
+    ).toBe('1.000e-3 units');
+  });
+
+  it('surfaces analysis errors in the UI', () => {
+    computeTrussPerformance.mockImplementationOnce(() => {
+      throw new Error('singular matrix');
+    });
+
+    const edges = renderer.getEdges();
+    edges.update({
+      id: 'edge-2',
+      from: 1,
+      to: 2,
+      area: 1,
+      width: 5,
+      color: 'lightgrey',
+      smooth: false,
+      elastic_modulus: 1,
+    });
+
+    document.getElementById('analyze-truss').click();
+
+    expect(
+      document.getElementById('analysis-error').classList.contains('d-none')
+    ).toBe(false);
+    expect(document.getElementById('analysis-error').textContent).toContain(
+      'singular matrix'
+    );
   });
 });
 
