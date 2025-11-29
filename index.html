@@ -46,8 +46,16 @@
             </div>
             <hr class="btn-outline-primary"/>
             <button type="button" class="btn btn-outline-primary btn-block" id="zoom-to-fit">Zoom to Fit</button>
-            <button type="button" class="btn btn-outline-primary btn-block disabled" id="show-forces">Show Forces</button>
-            <button type="button" class="btn btn-outline-primary btn-block disabled" id="show-fos">Show FOS</button>
+            <button type="button" class="btn btn-outline-primary btn-block" id="analyze-truss">Analyze Truss</button>
+            <div class="alert alert-info mt-3 d-none" role="status" id="analysis-results">
+                <h5 class="mb-2">Analysis summary</h5>
+                <p class="mb-1"><strong>Max displacement:</strong> <span id="analysis-max-displacement">0</span></p>
+                <div>
+                    <strong>Member axial forces:</strong>
+                    <ul class="list-group mt-2" id="analysis-member-forces"></ul>
+                </div>
+            </div>
+            <div class="alert alert-danger mt-3 d-none" role="alert" id="analysis-error"></div>
         </div>
         <div class="col-9 h-100 p-0">
             <div id="network"></div>
@@ -168,6 +176,7 @@
 <script>
     $("#loginModal").modal({backdrop: 'static', keyboard: false});
 </script>
+<script src="./performance.js"></script>
 <script src="./renderer.js"></script>
 </body>
 </html>
