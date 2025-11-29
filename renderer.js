@@ -61,78 +61,95 @@ if (typeof window !== 'undefined' && !window.$) {
   window.$ = $;
 }
 
-const vis = (typeof window !== 'undefined' && window.vis) || global.vis;
+const vis =
+  (typeof window !== 'undefined' && window.vis) ||
+  (typeof global !== 'undefined' ? global.vis : undefined);
+const hasVis = Boolean(vis);
 
-if (!vis) {
-  throw new Error('vis library is required for renderer initialization.');
+const createNoopNetwork = () => ({
+  addNodeMode: () => {},
+  disableEditMode: () => {},
+  editNode: () => {},
+  addEdgeMode: () => {},
+  editEdgeMode: () => {},
+  deleteSelected: () => {},
+  fit: () => {},
+  setOptions: () => {},
+});
+
+const createNoopDataSet = (initialItems = []) => {
+  const store = new Map();
+  let nextId = 1;
+
+  const upsert = (item) => {
+    const id = item.id ?? nextId++;
+    const existing = store.get(id) || { id };
+    store.set(id, { ...existing, ...item, id });
+    return id;
+  };
+
+  initialItems.forEach((item) => {
+    upsert(item);
+  });
+
+  return {
+    add: (item) => {
+      if (Array.isArray(item)) {
+        return item.map((entry) => upsert(entry));
+      }
+      return upsert(item);
+    },
+    get: (id) => store.get(id),
+    getIds: () => Array.from(store.keys()),
+    remove: (id) => store.delete(id),
+    update: (item) => {
+      if (!item || typeof item !== 'object') {
+        return;
+      }
+      upsert(item);
+    },
+  };
+};
+
+if (!hasVis) {
+  console.error('vis library is required for renderer initialization.');
 }
 
-/**
- * @param {unknown} candidate
- * @returns {candidate is FixedState}
- */
-function isFixedState(candidate) {
-  return (
-    Boolean(candidate) &&
-    typeof candidate === 'object' &&
-    'x' in candidate &&
-    'y' in candidate &&
-    typeof candidate.x === 'boolean' &&
-    typeof candidate.y === 'boolean'
-  );
-}
-
-/**
- * @param {unknown} candidate
- * @returns {candidate is NodePayload}
- */
-function isNodePayload(candidate) {
-  return (
-    Boolean(candidate) &&
-    typeof candidate === 'object' &&
-    Number.isFinite(candidate.x) &&
-    Number.isFinite(candidate.y) &&
-    isFixedState(candidate.fixed) &&
-    typeof candidate.physics === 'boolean' &&
-    typeof candidate.shape === 'string' &&
-    typeof candidate.size === 'number'
-  );
-}
-
-/**
- * @param {unknown} candidate
- * @returns {candidate is EdgePayload}
- */
-function isEdgePayload(candidate) {
-  return (
-    Boolean(candidate) &&
-    typeof candidate === 'object' &&
-    'id' in candidate &&
-    'from' in candidate &&
-    'to' in candidate &&
-    Number.isFinite(candidate.area) &&
-    Number.isFinite(candidate.elastic_modulus) &&
-    typeof candidate.color === 'string' &&
-    typeof candidate.width === 'number' &&
-    typeof candidate.smooth === 'boolean'
-  );
-}
-
-/**
- * @param {unknown} fixed
- * @returns {FixedState}
- */
-function normalizeFixedState(fixed) {
-  if (isFixedState(fixed)) {
-    return fixed;
-  }
-
+const normalizeFixedState = (fixed) => {
   if (typeof fixed === 'boolean') {
     return { x: fixed, y: fixed };
   }
 
+  if (fixed && typeof fixed === 'object') {
+    return {
+      x: Boolean(fixed.x),
+      y: Boolean(fixed.y),
+    };
+  }
+
   return { x: false, y: false };
-}
+};
+
+const isNodePayload = (node) =>
+  node !== undefined &&
+  typeof node === 'object' &&
+  typeof node.x === 'number' &&
+  typeof node.y === 'number' &&
+  typeof node.physics === 'boolean' &&
+  typeof node.shape === 'string' &&
+  typeof node.size === 'number' &&
+  node.fixed !== undefined;
+
+const isEdgePayload = (edge) =>
+  edge !== undefined &&
+  typeof edge === 'object' &&
+  edge.from !== undefined &&
+  edge.to !== undefined &&
+  Number.isFinite(edge.area) &&
+  Number.isFinite(edge.elastic_modulus) &&
+  Number.isFinite(edge.width) &&
+  typeof edge.smooth === 'boolean' &&
+  typeof edge.color === 'string';
 
 class RendererModule {
   constructor(visLibrary, jqueryInstance) {
@@ -142,15 +159,17 @@ class RendererModule {
     /** @type {vis.DataSet<NodePayload>} */
     this.nodes = this.createInitialNodes();
     /** @type {vis.DataSet<EdgePayload>} */
-    this.edges = new this.vis.DataSet([]);
+    this.edges = hasVis ? new this.vis.DataSet([]) : createNoopDataSet();
 
     this.container = document.getElementById('network');
     this.options = this.createOptions();
-    this.network = new this.vis.Network(
-      this.container,
-      { nodes: this.nodes, edges: this.edges },
-      this.options
-    );
+    this.network = hasVis
+      ? new this.vis.Network(
+          this.container,
+          { nodes: this.nodes, edges: this.edges },
+          this.options
+        )
+      : createNoopNetwork();
 
     this.registerEventHandlers();
   }
@@ -177,7 +196,9 @@ class RendererModule {
       },
     ];
 
-    return new this.vis.DataSet(initialNodes);
+    return hasVis
+      ? new this.vis.DataSet(initialNodes)
+      : createNoopDataSet(initialNodes);
   }
 
   createOptions() {
@@ -338,9 +359,15 @@ class RendererModule {
       this.network.fit({ animation: true });
     });
 
-    this.$('#analyze-truss').on('click', () => {
-      this.analyzeStructure();
-    });
+    const loginButton = document.getElementById('login-modal-apply');
+    if (loginButton) {
+      loginButton.addEventListener('click', () => {
+        if (this.$ && typeof this.$.fn?.modal === 'function') {
+          this.$('#loginModal').modal('hide');
+        }
+        this.showWorkspace();
+      });
+    }
 
     this.$('#node-modal-apply').on('click', () => {
       const nodeId = this.$('#nodeModalLabel').val();
@@ -398,16 +425,9 @@ class RendererModule {
       if (!isEdgePayload(updatedEdge)) {
         throw new Error('Invalid edge data submitted.');
       }
-
       this.edges.update(updatedEdge);
       this.$('#edgeModal').modal('hide');
       this.updateEdges();
-    });
-
-    this.$('#login-modal-apply').on('click', () => {
-      this.$('#loginModal').modal('hide');
-      this.$('#all').removeClass('d-none');
-      this.network.fit();
     });
   }
 
@@ -528,6 +548,17 @@ class RendererModule {
     });
   }
 
+  showWorkspace() {
+    const workspace = document.getElementById('all');
+    if (workspace) {
+      workspace.classList.remove('d-none');
+    }
+
+    if (typeof this.network?.fit === 'function') {
+      this.network.fit({ animation: true });
+    }
+  }
+
   deactivate(name) {
     this.$(name).removeClass('active');
   }
@@ -576,6 +607,12 @@ const rendererApi = {
   getEdges: () => rendererModule.edges,
   analyze_truss: () => rendererModule.analyzeStructure(),
 };
+
+document.addEventListener('click', (event) => {
+  if (event.target?.id === 'login-modal-apply') {
+    document.getElementById('all')?.classList.remove('d-none');
+  }
+});
 
 if (typeof window !== 'undefined') {
   window.electruss = rendererApi;
